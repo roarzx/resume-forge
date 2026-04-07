@@ -7,20 +7,21 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient() {
-  // 本地开发用 SQLite，不需要 adapter
-  if (process.env.NODE_ENV === "development" || !process.env.TURSO_DATABASE_AUTH_TOKEN) {
-    return new PrismaClient();
+  const dbUrl = process.env.DATABASE_URL;
+  const dbToken = process.env.TURSO_DATABASE_AUTH_TOKEN;
+
+  // 如果配置完整，用 Turso adapter
+  if (dbUrl && dbToken) {
+    const libsql = createClient({
+      url: dbUrl,
+      authToken: dbToken,
+    });
+    const adapter = new PrismaLibSQL(libsql);
+    return new PrismaClient({ adapter } as any);
   }
 
-  // 生产环境用 Turso（v5 adapter：先创建 libsql client，再传给 PrismaLibSQL）
-  const libsql = createClient({
-    url: process.env.DATABASE_URL!,
-    authToken: process.env.TURSO_DATABASE_AUTH_TOKEN!,
-  });
-
-  const adapter = new PrismaLibSQL(libsql);
-  // @ts-expect-error - adapter is available with driverAdapters preview feature
-  return new PrismaClient({ adapter });
+  // 否则用普通 PrismaClient
+  return new PrismaClient();
 }
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();
