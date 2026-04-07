@@ -1,6 +1,7 @@
 {
   "framework": "nextjs",
-  "buildCommand": "npx prisma generate && npx prisma db push && next build",
+  "buildCommand": "npx prisma generate && next build",
+  "postdeployCommand": "npx prisma db push",
   "outputDirectory": ".next",
   "installCommand": "npm install",
   "regions": ["iad1"],
