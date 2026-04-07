@@ -19,6 +19,7 @@ function createPrismaClient() {
   });
 
   const adapter = new PrismaLibSQL(libsql);
+  // @ts-expect-error - adapter is available with driverAdapters preview feature
   return new PrismaClient({ adapter });
 }
 
