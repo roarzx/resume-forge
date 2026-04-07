@@ -12,6 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ResumeTemplateRenderer } from "@/components/templates";
+import { ShareDialog } from "@/components/share-dialog";
+import { AtsScoreDialog } from "@/components/ats-score-dialog";
 import {
   DEFAULT_RESUME_CONTENT,
   TEMPLATES,
@@ -33,15 +35,20 @@ import {
   FolderKanban,
   Award,
   Sparkles,
+  Share2,
+  TrendingUp,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import Link from "next/link";
-// html2pdf.js 依赖浏览器环境，必须动态导入（不能 SSR）
 
 interface ResumeData {
   id: string;
   title: string;
   template: string;
   content: ResumeContent;
+  shareToken?: string | null;
+  sharePassword?: string | null;
 }
 
 interface FormData {
@@ -105,9 +112,15 @@ export default function EditResumePage({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [previewScale, setPreviewScale] = useState(0.8);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateType>("classic");
   const [isExporting, setIsExporting] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [atsOpen, setAtsOpen] = useState(false);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasChangesRef = useRef(false);
   const previewRef = useRef<HTMLDivElement>(null);
 
   const { register, control, watch, setValue, reset } = useForm<FormData>({
@@ -167,8 +180,8 @@ export default function EditResumePage({
         setResume(data);
         setSelectedTemplate(data.template as TemplateType);
 
-        const content = typeof data.content === "string" 
-          ? JSON.parse(data.content) 
+        const content = typeof data.content === "string"
+          ? JSON.parse(data.content)
           : data.content;
 
         reset({
@@ -197,11 +210,41 @@ export default function EditResumePage({
     }
   };
 
-  const saveResume = useCallback(async () => {
+  // 监听表单变化，触发自动保存
+  useEffect(() => {
+    if (isLoading) return;
+    hasChangesRef.current = true;
+
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+
+    setSaveStatus("idle");
+
+    autoSaveTimerRef.current = setTimeout(() => {
+      if (hasChangesRef.current && resume) {
+        hasChangesRef.current = false;
+        setSaveStatus("saving");
+        saveResume(true).then(() => {
+          setSaveStatus("saved");
+          setTimeout(() => setSaveStatus("idle"), 3000);
+        }).catch(() => {
+          setSaveStatus("error");
+        });
+      }
+    }, 30000); // 30秒自动保存
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, [formValues]);
+
+  const saveResume = useCallback(async (isAutoSave = false) => {
     if (!resume) return;
 
     setIsSaving(true);
-    setIsSaved(false);
 
     try {
       const content: ResumeContent = {
@@ -230,21 +273,18 @@ export default function EditResumePage({
       });
 
       if (response.ok) {
-        setIsSaved(true);
-        setTimeout(() => setIsSaved(false), 2000);
+        if (!isAutoSave) {
+          toast({ title: "保存成功 ✓" });
+        }
       } else {
-        toast({
-          title: "保存失败",
-          description: "请稍后重试",
-          variant: "destructive",
-        });
+        if (!isAutoSave) {
+          toast({ title: "保存失败", variant: "destructive" });
+        }
       }
     } catch {
-      toast({
-        title: "保存失败",
-        description: "请稍后重试",
-        variant: "destructive",
-      });
+      if (!isAutoSave) {
+        toast({ title: "保存失败", variant: "destructive" });
+      }
     } finally {
       setIsSaving(false);
     }
@@ -349,23 +389,46 @@ export default function EditResumePage({
             <div>
               <h1 className="font-semibold">{resume?.title || "编辑简历"}</h1>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                {isSaving ? (
+                {saveStatus === "saving" && (
                   <>
                     <Loader2 className="h-3 w-3 animate-spin" />
-                    保存中...
+                    自动保存中...
                   </>
-                ) : isSaved ? (
+                )}
+                {saveStatus === "saved" && (
                   <>
                     <CheckCircle className="h-3 w-3 text-green-500" />
                     已保存
                   </>
-                ) : null}
+                )}
+                {saveStatus === "error" && (
+                  <>
+                    <span className="h-3 w-3 rounded-full bg-red-500 inline-block" />
+                    保存失败
+                  </>
+                )}
+                {saveStatus === "idle" && !isSaving && (
+                  <span className="text-xs">编辑中...</span>
+                )}
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={saveResume} disabled={isSaving}>
+            {/* ATS 评分 */}
+            <Button variant="outline" onClick={() => setAtsOpen(true)} title="ATS 简历评分">
+              <TrendingUp className="h-4 w-4" />
+              评分
+            </Button>
+
+            {/* 分享 */}
+            <Button variant="outline" onClick={() => setShareOpen(true)} title="分享简历">
+              <Share2 className="h-4 w-4" />
+              分享
+            </Button>
+
+            {/* 手动保存 */}
+            <Button variant="outline" onClick={() => saveResume(false)} disabled={isSaving}>
               {isSaving ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
@@ -373,6 +436,22 @@ export default function EditResumePage({
               )}
               保存
             </Button>
+
+            {/* 全屏预览 */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsFullscreen(!isFullscreen)}
+              title={isFullscreen ? "退出全屏" : "全屏预览"}
+            >
+              {isFullscreen ? (
+                <Minimize2 className="h-4 w-4" />
+              ) : (
+                <Maximize2 className="h-4 w-4" />
+              )}
+            </Button>
+
+            {/* 导出 PDF */}
             <Button variant="default" onClick={exportPDF} disabled={isExporting}>
               {isExporting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -386,9 +465,17 @@ export default function EditResumePage({
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex">
+      <div className={`flex-1 flex ${isFullscreen ? "fixed inset-0 z-50 bg-background" : ""}`}>
+        {isFullscreen && (
+          <div className="absolute top-4 right-4 z-10">
+            <Button variant="secondary" size="icon" onClick={() => setIsFullscreen(false)}>
+              <Minimize2 className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+
         {/* Editor Panel */}
-        <div className="w-[480px] border-r bg-background overflow-y-auto">
+        <div className={`${isFullscreen ? "hidden" : "w-[480px] border-r bg-background overflow-y-auto"}`}>
           <Tabs defaultValue="basic" className="w-full">
             <TabsList className="w-full grid grid-cols-6 rounded-none border-b">
               <TabsTrigger value="basic" className="text-xs">
@@ -771,41 +858,43 @@ export default function EditResumePage({
         </div>
 
         {/* Preview Panel */}
-        <div className="flex-1 bg-muted p-8 overflow-auto">
-          <div className="flex justify-center mb-4">
-            <div className="flex items-center gap-2 bg-background rounded-lg p-1 shadow-sm">
-              <Button
-                variant={previewScale === 0.6 ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setPreviewScale(0.6)}
-              >
-                60%
-              </Button>
-              <Button
-                variant={previewScale === 0.8 ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setPreviewScale(0.8)}
-              >
-                80%
-              </Button>
-              <Button
-                variant={previewScale === 1 ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setPreviewScale(1)}
-              >
-                100%
-              </Button>
+        <div className={`flex-1 bg-muted overflow-auto ${isFullscreen ? "p-8 flex items-start justify-center" : "p-8"}`}>
+          {!isFullscreen && (
+            <div className="flex justify-center mb-4">
+              <div className="flex items-center gap-2 bg-background rounded-lg p-1 shadow-sm">
+                <Button
+                  variant={previewScale === 0.6 ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setPreviewScale(0.6)}
+                >
+                  60%
+                </Button>
+                <Button
+                  variant={previewScale === 0.8 ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setPreviewScale(0.8)}
+                >
+                  80%
+                </Button>
+                <Button
+                  variant={previewScale === 1 ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setPreviewScale(1)}
+                >
+                  100%
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="flex justify-center">
+          <div className={`flex justify-center ${isFullscreen ? "w-full" : ""}`}>
             <div
               ref={previewRef}
               className="bg-white shadow-2xl"
               style={{
                 width: "210mm",
                 minHeight: "297mm",
-                transform: `scale(${previewScale})`,
+                transform: `scale(${isFullscreen ? 0.95 : previewScale})`,
                 transformOrigin: "top center",
               }}
             >
@@ -817,6 +906,22 @@ export default function EditResumePage({
           </div>
         </div>
       </div>
+
+      {/* 分享弹窗 */}
+      <ShareDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        resumeId={resume?.id || ""}
+        initialShareToken={resume?.shareToken}
+        initialHasPassword={!!resume?.sharePassword}
+      />
+
+      {/* ATS 评分弹窗 */}
+      <AtsScoreDialog
+        open={atsOpen}
+        onOpenChange={setAtsOpen}
+        content={getPreviewContent()}
+      />
     </div>
   );
 }

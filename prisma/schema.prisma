@@ -17,12 +17,14 @@ model User {
 }
 
 model Resume {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title     String   @default("我的简历")
-  template  String   @default("classic")
-  content   String   @default("{}")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title          String    @default("我的简历")
+  template       String    @default("classic")
+  content        String    @default("{}")
+  shareToken     String?   @unique
+  sharePassword  String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }

@@ -26,7 +26,9 @@ export async function GET(
       return NextResponse.json({ error: "无权限访问" }, { status: 403 });
     }
 
-    return NextResponse.json(resume);
+    // 返回给编辑者的信息（不含分享密码）
+    const { sharePassword, ...safeResume } = resume;
+    return NextResponse.json(safeResume);
   } catch (error) {
     console.error("获取简历错误:", error);
     return NextResponse.json(
