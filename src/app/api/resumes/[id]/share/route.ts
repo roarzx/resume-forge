@@ -50,11 +50,8 @@ export async function POST(
       data: { shareToken, sharePassword },
     });
 
-    const shareUrl = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/shared/${shareToken}`;
-
     return NextResponse.json({
       shareToken,
-      shareUrl,
       hasPassword: !!sharePassword,
     });
   } catch (error) {

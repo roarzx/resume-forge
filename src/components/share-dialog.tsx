@@ -37,7 +37,9 @@ export function ShareDialog({
   const [shareEnabled, setShareEnabled] = useState(!!initialShareToken);
   const [usePassword, setUsePassword] = useState(!!initialHasPassword);
   const [password, setPassword] = useState("");
-  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(
+    initialShareToken ? `${typeof window !== "undefined" ? window.location.origin : ""}/shared/${initialShareToken}` : null
+  );
   const [copied, setCopied] = useState(false);
 
   const handleToggleShare = async (enabled: boolean) => {
@@ -68,7 +70,9 @@ export function ShareDialog({
       if (!response.ok) throw new Error();
 
       const data = await response.json();
-      setShareUrl(data.shareUrl);
+      // 前端动态拼接，避免硬编码域名
+      const origin = window.location.origin;
+      setShareUrl(`${origin}/shared/${data.shareToken}`);
       setShareEnabled(true);
       toast({ title: "分享链接已生成" });
     } catch {
