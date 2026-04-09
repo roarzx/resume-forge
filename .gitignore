@@ -45,3 +45,5 @@ next-env.d.ts
 # local database
 *.db
 *.db-journal
+playwright-report/
+test-results/
