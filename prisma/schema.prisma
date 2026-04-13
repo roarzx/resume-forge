@@ -34,3 +34,30 @@ model Resume {
 
   @@map("resumes")
 }
+
+model Job {
+  id          String     @id @default(cuid())
+  title       String
+  company     String?
+  city        String?
+  source      String     // "boss" | "linkedin" | "indeed"
+  sourceUrl   String
+  salary      String?
+  tags        String?    // JSON array of skill tags for matching
+  description String?
+  fetchedAt   DateTime   @default(now())
+  expiresAt   DateTime?  // cache expiry, null = no expiry
+  clicks      JobClick[]
+
+  @@map("jobs")
+}
+
+model JobClick {
+  id        String   @id @default(cuid())
+  jobId     String
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  userId    String?
+  createdAt DateTime @default(now())
+
+  @@map("job_clicks")
+}

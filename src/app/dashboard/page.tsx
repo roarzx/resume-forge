@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, FileText, Edit, Trash2, Copy, Loader2, Calendar } from "lucide-react";
 import { TEMPLATES, type TemplateType } from "@/types/resume";
+import JobRecommendations from "@/components/job-recommendations";
 
 interface Resume {
   id: string;
@@ -307,46 +308,54 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {resumes.map((resume) => (
-              <Card key={resume.id} className="group hover:shadow-md transition-shadow">
-                <CardHeader>
-                  <CardTitle className="truncate">{resume.title}</CardTitle>
-                  <CardDescription className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    {new Date(resume.updatedAt).toLocaleDateString("zh-CN")}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <Link href={`/dashboard/${resume.id}/edit`}>
-                      <Button variant="outline" className="gap-2">
-                        <Edit className="h-4 w-4" />
-                        编辑
-                      </Button>
-                    </Link>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => duplicateResume(resume)}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setDeleteResumeId(resume.id)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+          <>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {resumes.map((resume) => (
+                <Card key={resume.id} className="group hover:shadow-md transition-shadow">
+                  <CardHeader>
+                    <CardTitle className="truncate">{resume.title}</CardTitle>
+                    <CardDescription className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {new Date(resume.updatedAt).toLocaleDateString("zh-CN")}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <Link href={`/dashboard/${resume.id}/edit`}>
+                        <Button variant="outline" className="gap-2">
+                          <Edit className="h-4 w-4" />
+                          编辑
+                        </Button>
+                      </Link>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => duplicateResume(resume)}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDeleteResumeId(resume.id)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* 职位推荐 */}
+            <JobRecommendations
+              resumeId={resumes[0]?.id}
+              userId={session?.user?.email || undefined}
+            />
+          </>
         )}
       </div>
 
